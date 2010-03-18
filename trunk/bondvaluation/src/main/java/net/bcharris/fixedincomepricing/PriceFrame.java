@@ -115,7 +115,7 @@ public class PriceFrame extends javax.swing.JFrame {
         Binding binding = new Binding();
         for (int i = 1; i <= neededFactors; i++) {
             binding.setVariable("period", new Integer(i));
-            binding.setVariable("periods", neededFactors);
+            binding.setVariable("periods", neededFactors+1);
             GroovyShell shell = new GroovyShell(binding);
             Object result;
             try {
@@ -377,6 +377,7 @@ public class PriceFrame extends javax.swing.JFrame {
                 + "<li><b>1/(period+1)</b>: Quickly decreasing factor schedule.</li>"
                 + "<li><b>if (period==1) 1; else 0.1</b>: Large drop after period 1.</li>"
                 + "<li><b>if (period==1) x=2; else x+=0.1; return 1/x</b>: Demonstrating saving state.</li>"
+                + "<li><b>(periods-period)/periods</b>: Stair stepping.</li>"
                 + "</ul>"
                 + "</html>";
         JEditorPane pane = new JEditorPane();
