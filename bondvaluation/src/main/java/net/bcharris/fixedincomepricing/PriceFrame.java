@@ -387,8 +387,8 @@ public class PriceFrame extends javax.swing.JFrame {
         JDialog dialog = new JDialog(this, "Factor Generation Help");
         dialog.add(new JScrollPane(pane));
         dialog.setPreferredSize(new Dimension(600, 400));
-        dialog.setLocationRelativeTo(null);
         dialog.pack();
+        dialog.setLocationRelativeTo(null);
         dialog.setVisible(true);
     }//GEN-LAST:event_helpButtonActionPerformed
 
