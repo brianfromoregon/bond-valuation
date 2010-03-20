@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<jnlp codebase="http://bond-valuation.googlecode.com/svn/bin/" href="launch.jnlp" spec="1.0+">
+    <information>
+	<title>bond-valuation</title>
+	<vendor>brian</vendor>
+	<homepage href=""/>
+	<description>bond-valuation</description>
+	<description kind="short">bond-valuation</description>
+	<offline-allowed/>
+    </information>
+    
+    <resources>
+	<j2se version="1.5+"/>
+	<jar eager="true" href="bondvaluation.jar" main="true"/>
+    </resources>
+    <application-desc main-class="net.bcharris.fixedincomepricing.PriceFrame">
+	
+    </application-desc>
+</jnlp>
