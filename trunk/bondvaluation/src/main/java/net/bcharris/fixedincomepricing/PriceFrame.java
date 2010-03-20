@@ -104,7 +104,18 @@ public class PriceFrame extends javax.swing.JFrame {
 
     private void processFactorScript() {
         String newFactorScript = factorScriptEditor.getTextEditor().getText();
-        boolean sameScript = newFactorScript.equals(factorScript);
+        Double newFactor;
+        try
+        {
+            String candidate = newFactorScript.trim();
+            if (candidate.startsWith("return "))
+                candidate = candidate.substring(7).trim();
+            newFactor = Double.parseDouble(candidate);
+        }
+        catch (NumberFormatException ex)
+        {
+            newFactor = null;
+        }
         int couponsPerYear = Integer.valueOf(couponsPerYearSpinner.getValue().toString());
         int daysToMaturity = (Integer) daysToMaturitySpinner.getValue();
         int periodLength = (int) (360d / couponsPerYear);
@@ -114,40 +125,47 @@ public class PriceFrame extends javax.swing.JFrame {
         newFactors[newFactors.length - 1] = 0;
         Binding binding = new Binding();
         for (int i = 1; i <= neededFactors; i++) {
-            binding.setVariable("period", new Integer(i));
-            binding.setVariable("periods", neededFactors+1);
-            GroovyShell shell = new GroovyShell(binding);
-            Object result;
-            try {
-                result = shell.evaluate(newFactorScript);
-            } catch (CompilationFailedException ex) {
-                showError("Groovy compilation error", "Could not compile your Groovy script.  " + ex.getMessage(), sameScript);
-                return;
-            } catch (Exception ex) {
-                showError("Groovy execution error", "There was a problem with your Groovy script.  " + ex.getMessage(), sameScript);
-                return;
-            }
-            if (result == null) {
-                showError("Groovy script error", "Your script did not return a value.", sameScript);
-                return;
-            }
             double computedFactor;
-            try {
-                computedFactor = Double.valueOf(result.toString());
-            } catch (NumberFormatException ex) {
-                showError("Groovy script error", "Your script did not return a valid floating point number.", sameScript);
-                return;
+            if (newFactor != null)
+            {
+                computedFactor = newFactor;
+            }
+            else
+            {
+                binding.setVariable("period", new Integer(i));
+                binding.setVariable("periods", neededFactors + 1);
+                GroovyShell shell = new GroovyShell(binding);
+                Object result;
+                try {
+                    result = shell.evaluate(newFactorScript);
+                } catch (CompilationFailedException ex) {
+                    showError("Groovy compilation error", "Could not compile your Groovy script.  " + ex.getMessage());
+                    return;
+                } catch (Exception ex) {
+                    showError("Groovy execution error", "There was a problem with your Groovy script.  " + ex.getMessage());
+                    return;
+                }
+                if (result == null) {
+                    showError("Groovy script error", "Your script did not return a value.");
+                    return;
+                }
+                try {
+                    computedFactor = Double.valueOf(result.toString());
+                } catch (NumberFormatException ex) {
+                    showError("Groovy script error", "Your script did not return a valid floating point number.");
+                    return;
+                }
             }
             if (computedFactor <= 0) {
-                showError("Invalid factor", "Your script returned a factor less than or equal to 0.", sameScript);
+                showError("Invalid factor", "Your script returned a factor less than or equal to 0.");
                 return;
             }
             if (computedFactor > 1) {
-                showError("Invalid factor", "Your script returned a factor greater than 1.", sameScript);
+                showError("Invalid factor", "Your script returned a factor greater than 1.");
                 return;
             }
             if (computedFactor > newFactors[i - 1]) {
-                showError("Invalid factor", "Your script computed non-decreasing factors.", sameScript);
+                showError("Invalid factor", "Your script computed non-decreasing factors.");
                 return;
             }
             newFactors[i] = computedFactor;
@@ -159,11 +177,8 @@ public class PriceFrame extends javax.swing.JFrame {
         redrawPrice();
     }
 
-    private void showError(String title, String msg, boolean sameScript) {
+    private void showError(String title, String msg) {
         JOptionPane.showMessageDialog(this, new JScrollPane(new JTextArea(msg)), title, JOptionPane.ERROR_MESSAGE);
-        if (sameScript) {
-            factorScript = DEFAULT_FACTOR_SCRIPT;
-        }
     }
 
     @SuppressWarnings("unchecked")
