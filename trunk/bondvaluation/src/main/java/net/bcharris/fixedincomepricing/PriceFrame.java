@@ -52,8 +52,10 @@ public class PriceFrame extends javax.swing.JFrame {
         priceAxis.setAutoRangeIncludesZero(false);
         NumberAxis factorAxis = new NumberAxis("Factor");
         NumberAxis dtmAxis = new NumberAxis("Days To Maturity");
+        dtmAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
         dtmAxis.setInverted(true);
         NumberAxis periodAxis = new NumberAxis("Period");
+        periodAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
         XYLineAndShapeRenderer lineRenderer = new XYLineAndShapeRenderer(true, false);
         XYLineAndShapeRenderer shapeRenderer = new XYLineAndShapeRenderer(false, true);
         pricePlot = new XYPlot();
