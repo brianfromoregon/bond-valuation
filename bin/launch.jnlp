@@ -16,4 +16,8 @@
     <application-desc main-class="net.bcharris.fixedincomepricing.PriceFrame">
 	
     </application-desc>
+	
+	<security>
+    <all-permissions/>
+    </security>
 </jnlp>
