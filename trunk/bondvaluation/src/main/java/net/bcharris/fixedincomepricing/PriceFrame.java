@@ -69,7 +69,7 @@ public class PriceFrame extends javax.swing.JFrame {
         factorPlot.setRenderer(0, new XYStepRenderer());
         priceChartPanel.add(new ChartPanel(new JFreeChart("", null, pricePlot, false)));
         factorChartPanel.add(new ChartPanel(new JFreeChart("", null, factorPlot, false)));
-        processFactorScript();
+        generateNewFactors();
         pack();
     }
 
@@ -107,15 +107,7 @@ public class PriceFrame extends javax.swing.JFrame {
         factorPlot.setDataset(0, new XYSeriesCollection(factorSeries));
     }
 
-    private void processFactorScript() {
-        String factorScript = factorScriptEditor.getTextEditor().getText();
-        GroovyPeriodValueGenerator newGenerator;
-        try {
-            newGenerator = new GroovyPeriodValueGenerator(factorScript);
-        } catch (CompilationFailedException ex) {
-            showError("Syntax error in your factor generation Groovy script", ex.getMessage());
-            return;
-        }
+    private void generateNewFactors() {
         int couponsPerYear = Integer.valueOf(couponsPerYearSpinner.getValue().toString());
         int daysToMaturity = (Integer) daysToMaturitySpinner.getValue();
         int periodLength = DayCountUtil.periodLength(couponsPerYear);
@@ -125,7 +117,7 @@ public class PriceFrame extends javax.swing.JFrame {
         }
         double[] newFactors = new double[neededFactors];
         try {
-            newGenerator.generate(newFactors);
+            factorGenerator.generate(newFactors);
         } catch (GenerationException ex) {
             showError("Problem with your factor generation Groovy script", ex.getMessage());
             return;
@@ -146,7 +138,6 @@ public class PriceFrame extends javax.swing.JFrame {
         }
 
         factors = newFactors;
-        factorGenerator = newGenerator;
         redrawFactors();
         redrawPrice();
     }
@@ -326,7 +317,7 @@ public class PriceFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void daysToMaturitySpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_daysToMaturitySpinnerStateChanged
-        processFactorScript();
+        generateNewFactors();
     }//GEN-LAST:event_daysToMaturitySpinnerStateChanged
 
     private void couponSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_couponSpinnerStateChanged
@@ -338,7 +329,7 @@ public class PriceFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_yieldSpinnerStateChanged
 
     private void couponsPerYearSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_couponsPerYearSpinnerStateChanged
-        processFactorScript();
+        generateNewFactors();
     }//GEN-LAST:event_couponsPerYearSpinnerStateChanged
 
     private void paymentDelaySpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_paymentDelaySpinnerStateChanged
@@ -346,7 +337,14 @@ public class PriceFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_paymentDelaySpinnerStateChanged
 
     private void recomputeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recomputeButtonActionPerformed
-        processFactorScript();
+        String factorScript = factorScriptEditor.getTextEditor().getText();
+        try {
+            factorGenerator = new GroovyPeriodValueGenerator(factorScript);
+        } catch (CompilationFailedException ex) {
+            showError("Syntax error in your factor generation Groovy script", ex.getMessage());
+            return;
+        }
+        generateNewFactors();
     }//GEN-LAST:event_recomputeButtonActionPerformed
 
     private void helpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButtonActionPerformed
