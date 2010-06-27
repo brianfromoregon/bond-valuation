@@ -1,7 +1,5 @@
 package net.bcharris.fixedincomepricing;
 
-import groovy.lang.Binding;
-import groovy.lang.GroovyShell;
 import groovy.ui.ConsoleTextEditor;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -14,6 +12,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import net.bcharris.fixedincomepricing.GroovyPeriodValueGenerator.GenerationException;
 import org.codehaus.groovy.control.CompilationFailedException;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -30,15 +29,15 @@ public class PriceFrame extends javax.swing.JFrame {
     private XYPlot factorPlot;
     private double[] factors;
     private ConsoleTextEditor factorScriptEditor;
-    private String DEFAULT_FACTOR_SCRIPT = "1";
-    private String factorScript;
+    private double DEFAULT_FACTOR = 1;
+    private GroovyPeriodValueGenerator factorGenerator;
 
     public PriceFrame() {
         super("Bond Valuation");
         initComponents();
-        factorScript = DEFAULT_FACTOR_SCRIPT;
+        factorGenerator = new GroovyPeriodValueGenerator(String.valueOf(DEFAULT_FACTOR));
         factorScriptEditor = new ConsoleTextEditor();
-        factorScriptEditor.getTextEditor().setText(factorScript);
+        factorScriptEditor.getTextEditor().setText(String.valueOf(DEFAULT_FACTOR));
         factorScriptEditor.getTextEditor().addKeyListener(new KeyAdapter() {
 
             @Override
@@ -109,78 +108,45 @@ public class PriceFrame extends javax.swing.JFrame {
     }
 
     private void processFactorScript() {
-        String newFactorScript = factorScriptEditor.getTextEditor().getText();
-        Double newFactor;
-        try
-        {
-            String candidate = newFactorScript.trim();
-            if (candidate.startsWith("return "))
-                candidate = candidate.substring(7).trim();
-            newFactor = Double.parseDouble(candidate);
-        }
-        catch (NumberFormatException ex)
-        {
-            newFactor = null;
+        String factorScript = factorScriptEditor.getTextEditor().getText();
+        GroovyPeriodValueGenerator newGenerator;
+        try {
+            newGenerator = new GroovyPeriodValueGenerator(factorScript);
+        } catch (CompilationFailedException ex) {
+            showError("Syntax error in your factor generation Groovy script", ex.getMessage());
+            return;
         }
         int couponsPerYear = Integer.valueOf(couponsPerYearSpinner.getValue().toString());
         int daysToMaturity = (Integer) daysToMaturitySpinner.getValue();
         int periodLength = DayCountUtil.periodLength(couponsPerYear);
-        int neededFactors = daysToMaturity / periodLength;
+        int neededFactors = daysToMaturity / periodLength + 1;
         if (daysToMaturity % periodLength == 0) {
             neededFactors--;
         }
-        double[] newFactors = new double[neededFactors + 1];
-        newFactors[0] = 1;
-        Binding binding = new Binding();
-        for (int i = 1; i <= neededFactors; i++) {
-            double computedFactor;
-            if (newFactor != null)
-            {
-                computedFactor = newFactor;
-            }
-            else
-            {
-                binding.setVariable("period", new Integer(i));
-                binding.setVariable("periods", neededFactors + 1);
-                GroovyShell shell = new GroovyShell(binding);
-                Object result;
-                try {
-                    result = shell.evaluate(newFactorScript);
-                } catch (CompilationFailedException ex) {
-                    showError("Groovy compilation error", "Could not compile your Groovy script.  " + ex.getMessage());
-                    return;
-                } catch (Exception ex) {
-                    showError("Groovy execution error", "There was a problem with your Groovy script.  " + ex.getMessage());
-                    return;
-                }
-                if (result == null) {
-                    showError("Groovy script error", "Your script did not return a value.");
-                    return;
-                }
-                try {
-                    computedFactor = Double.valueOf(result.toString());
-                } catch (NumberFormatException ex) {
-                    showError("Groovy script error", "Your script did not return a valid floating point number.");
-                    return;
-                }
-            }
-            if (computedFactor <= 0) {
+        double[] newFactors = new double[neededFactors];
+        try {
+            newGenerator.generate(newFactors);
+        } catch (GenerationException ex) {
+            showError("Problem with your factor generation Groovy script", ex.getMessage());
+            return;
+        }
+        for (int i = 0; i < newFactors.length; i++) {
+            if (newFactors[i] <= 0) {
                 showError("Invalid factor", "Your script returned a factor less than or equal to 0.");
                 return;
             }
-            if (computedFactor > 1) {
+            if (newFactors[i] > 1) {
                 showError("Invalid factor", "Your script returned a factor greater than 1.");
                 return;
             }
-            if (computedFactor > newFactors[i - 1]) {
+            if (i > 0 && newFactors[i] > newFactors[i - 1]) {
                 showError("Invalid factor", "Your script computed non-decreasing factors.");
                 return;
             }
-            newFactors[i] = computedFactor;
         }
 
         factors = newFactors;
-        factorScript = newFactorScript;
+        factorGenerator = newGenerator;
         redrawFactors();
         redrawPrice();
     }
@@ -398,8 +364,8 @@ public class PriceFrame extends javax.swing.JFrame {
                 + "<ul>"
                 + "<li><b>1</b>: Pay at maturity.</li>"
                 + "<li><b>1/(period+1)</b>: Quickly decreasing factor schedule.</li>"
-                + "<li><b>if (period==1) 1; else 0.1</b>: Large drop after period 1.</li>"
-                + "<li><b>if (period==1) x=2; else x+=0.1; return 1/x</b>: Demonstrating saving state.</li>"
+                + "<li><b>if (period==0) 1; else 0.1</b>: Large drop after period 0.</li>"
+                + "<li><b>if (period==0) x=2; else x+=0.1; return 1/x</b>: Demonstrating saving state.</li>"
                 + "<li><b>(periods-period)/periods</b>: Stair stepping.</li>"
                 + "</ul>"
                 + "</html>";
