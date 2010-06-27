@@ -21,11 +21,11 @@ public class Calc {
         if (partialPeriod > 0) {
             numCashFlows++;
         }
-        checkArgument(factors.length >= numCashFlows, "factors.length >= # of future cash flows");
-        checkArgument(rates.length == factors.length, "rates.length == factors.length");
+        checkArgument(factors.length >= numCashFlows, "factors.length (%s) >= # of future cash flows (%s)", factors.length, numCashFlows);
+        checkArgument(rates.length == factors.length, "rates.length (%s) == factors.length (%s)", rates.length, factors.length);
 
         double px = 0;
-        int periodIdx = numCashFlows;
+        int periodIdx = factors.length;
         boolean finalPeriod = true;
         for (int i = 0; i < numCashFlows; i++) {
             px *= 1 / (1 + periodYield);
