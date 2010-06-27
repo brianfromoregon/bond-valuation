@@ -1,34 +1,46 @@
 package net.bcharris.fixedincomepricing;
 
+import static com.google.common.base.Preconditions.*;
+
 public class Calc {
 
     /**
      * Calculate price.
      * @param daysToMaturity Number of days until maturity, must be >= 1.
-     * @param factors The factors, where factors[factors.length-1] must be 0.
+     * @param factors The factors for each period.  The array's last value need not be 0 because this function assumes
+     * the factor goes to 0 at maturity.
+     * @param rates The effective coupon rates for each period, each having been divided by the number of periods per year.
      * @param periodYield The required rate of return divided by the number of periods per year.
      * @param periodLength The length of a period.
-     * @param periodCoupon The annual coupon rate divided by the number of periods per year.
      * @param payDelay The payment delay for cash flows.
      * @return The price.
      */
-    public static double price(int daysToMaturity, double[] factors, double periodYield, int periodLength, double periodCoupon, int payDelay) {
-        int cashFlows = daysToMaturity / periodLength;
+    public static double price(int daysToMaturity, double[] factors, double rates[], double periodYield, int periodLength, int payDelay) {
+        int numCashFlows = daysToMaturity / periodLength;
         double partialPeriod = daysToMaturity % periodLength;
         if (partialPeriod > 0) {
-            cashFlows++;
+            numCashFlows++;
         }
+        checkArgument(factors.length >= numCashFlows, "factors.length >= # of future cash flows");
+        checkArgument(rates.length == factors.length, "rates.length == factors.length");
 
         double px = 0;
-        int factorIdx = factors.length - 1;
-        for (int i = 0; i < cashFlows; i++) {
+        int periodIdx = numCashFlows;
+        boolean finalPeriod = true;
+        for (int i = 0; i < numCashFlows; i++) {
             px *= 1 / (1 + periodYield);
-            double factor = factors[factorIdx];
-            double prevFactor = factors[factorIdx - 1];
+            double factor;
+            if (finalPeriod) {
+                factor = 0;
+                finalPeriod = false;
+            } else {
+                factor = factors[periodIdx];
+            }
+            double prevFactor = factors[periodIdx - 1];
 
-            px += prevFactor * periodCoupon; // coupon amount
+            px += prevFactor * rates[periodIdx - 1]; // coupon amount
             px += prevFactor - factor; // paydown amount
-            factorIdx--;
+            periodIdx--;
         }
 
         if (partialPeriod == 0) {
@@ -41,10 +53,10 @@ public class Calc {
             px *= 1 / Math.pow(1 + periodYield, (double) payDelay / periodLength);
         }
 
-        px /= factors[factorIdx];
+        px /= factors[periodIdx];
 
         if (partialPeriod > 0) {
-            px -= periodCoupon * ((periodLength - partialPeriod) / periodLength); // current accrued
+            px -= rates[periodIdx] * ((periodLength - partialPeriod) / periodLength); // calc date accrued
         }
         return px;
     }

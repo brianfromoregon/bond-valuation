@@ -7,6 +7,7 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
@@ -79,14 +80,16 @@ public class PriceFrame extends javax.swing.JFrame {
         double coupon = (Double) couponSpinner.getValue() * .01;
         int couponsPerYear = Integer.valueOf(couponsPerYearSpinner.getValue().toString());
         int daysToMaturity = (Integer) daysToMaturitySpinner.getValue();
-        int periodLength = (int) (360d / couponsPerYear);
+        int periodLength = DayCountUtil.periodLength(couponsPerYear);
         double periodCoupon = coupon / couponsPerYear;
         double periodYield = yield / couponsPerYear;
 
         XYSeries prices = new XYSeries(0, false);
         XYSeries coupons = new XYSeries(0, false);
         for (int i = daysToMaturity; i >= 1; i--) {
-            double price = Calc.price(i, factors, periodYield, periodLength, periodCoupon, paymentDelay);
+            double[] periodicRates = new double[factors.length];
+            Arrays.fill(periodicRates, periodCoupon);
+            double price = Calc.price(i, factors, periodicRates, periodYield, periodLength, paymentDelay);
             prices.add(i, price);
             if (i % periodLength == 0) {
                 coupons.add(i, price);
@@ -101,6 +104,7 @@ public class PriceFrame extends javax.swing.JFrame {
         for (int i = 0; i < factors.length; i++) {
             factorSeries.add(i, factors[i]);
         }
+        factorSeries.add(factors.length, 0);
         factorPlot.setDataset(0, new XYSeriesCollection(factorSeries));
     }
 
@@ -120,11 +124,13 @@ public class PriceFrame extends javax.swing.JFrame {
         }
         int couponsPerYear = Integer.valueOf(couponsPerYearSpinner.getValue().toString());
         int daysToMaturity = (Integer) daysToMaturitySpinner.getValue();
-        int periodLength = (int) (360d / couponsPerYear);
+        int periodLength = DayCountUtil.periodLength(couponsPerYear);
         int neededFactors = daysToMaturity / periodLength;
-        double[] newFactors = new double[neededFactors + 2];
+        if (daysToMaturity % periodLength == 0) {
+            neededFactors--;
+        }
+        double[] newFactors = new double[neededFactors + 1];
         newFactors[0] = 1;
-        newFactors[newFactors.length - 1] = 0;
         Binding binding = new Binding();
         for (int i = 1; i <= neededFactors; i++) {
             double computedFactor;
